@@ -16,12 +16,6 @@ mongo = MongoClient('localhost', 27017)
 # 3
 app.db = mongo.test
 
-
-@app.route('/my_page')
-def hello_world():
-    return 'Hello World! This is my first \'server\''
-
-
 @app.route('/users')
 def get_users():
     # Our users collection
@@ -45,10 +39,14 @@ def get_users():
 def add_course():
     if request.args.get('name') and request.args.get('instructor'):
         course_collection = app.db.courses
+        cursor = course_collection.find()
+        count = 0
+        for item in cursor:
+            count += 1
         name = request.args.get('name')
         instructor = request.args.get('instructor')
         entry = {'name': name, 'instructor': instructor,
-                 'id': len(course_collection)}
+                 'id': count}
         course_collection.insert_one(entry)
         entry["status"] = "added to database"
         return (entry, 121, None)
