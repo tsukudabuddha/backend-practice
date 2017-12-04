@@ -7,13 +7,20 @@ from util import JSONEncoder
 from pymongo import MongoClient
 from flask_restful import Api, Resource
 import bcrypt
+import loginInfo
 
 
 app = Flask(__name__)
 api = Api(app)
-mongo = MongoClient('localhost', 27017)
+
+# https://github.com/mongolab/mongodb-driver-examples/blob/master/python/pymongo_simple_example.py
+mongo = MongoClient('mongodb://travel-pro-server:tiger5000@ds129796.mlab.com:29796/travel_pro')
 app.bcrypt_rounds = 12
-app.db = mongo.trip_planner_development
+app.db = mongo.travel_pro
+auth_info = loginInfo.loginInfo()
+auth_user = auth_info[0]
+auth_password = auth_info[1]
+app.db.authenticate(auth_user, auth_password)
 
 
 def validate_auth(username, password):
@@ -50,21 +57,25 @@ class User(Resource):
         new_user = request.json
         users_collection = app.db.users
 
-        password = new_user['password']
-
-        # Convert password to utf-8 string
-        encodedPassword = password.encode('utf-8')
-
-        hashed = bcrypt.hashpw(
-            encodedPassword, bcrypt.gensalt(app.bcrypt_rounds)
-        )
-
-        new_user['password'] = hashed
-        users_collection.insert_one(new_user)
+        # Check for duplicate user
         username = new_user['username']
-        result = users_collection.find_one({'username': username})
+        duplicate = users_collection.find_one({'username': username})
+        if not duplicate:
+            password = new_user['password']
 
-        return result
+            # Convert password to utf-8 string
+            encodedPassword = password.encode('utf-8')
+
+            hashed = bcrypt.hashpw(
+                encodedPassword, bcrypt.gensalt(app.bcrypt_rounds)
+            )
+
+            new_user['password'] = hashed
+            users_collection.insert_one(new_user)
+
+            return new_user
+
+        return("That username is already taken", 409, None)
 
     @authenticated_request
     def get(self):
@@ -106,7 +117,9 @@ class Trip(Resource):
     def post(self):
         """Add trip to database."""
         new_trip = request.json
+        new_trip['travelers'] = [request.authorization.username]
         trips_collection = app.db.trips
+
         result = trips_collection.insert_one(new_trip)
 
         return result
@@ -131,6 +144,20 @@ class Trip(Resource):
         trip_id = request.json['trip_id']
         self.trips_collection.remove({'trip': trip_id})
         return ('user has been deleted', 200, None)
+
+    @authenticated_request
+    def patch(self):
+        """Update trip."""
+        username = request.authorization.username
+        updated_trip = request.json
+        trips_collection = app.db.trips
+        trip = trips_collection.find_one_and_update(
+            {"id": username},
+            {"$set": updated_trip},
+            # return_document=ReturnDocument.AFTER
+        )
+
+        return trip
 
 
 api.add_resource(Trip, '/trips')
