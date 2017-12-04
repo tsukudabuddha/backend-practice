@@ -14,7 +14,7 @@ app = Flask(__name__)
 api = Api(app)
 
 # https://github.com/mongolab/mongodb-driver-examples/blob/master/python/pymongo_simple_example.py
-mongo = MongoClient('mongodb://travel-pro-server:tiger5000@ds129796.mlab.com:29796/travel_pro')
+mongo = MongoClient('mongodb://ds129796.mlab.com:29796/travel_pro')
 app.bcrypt_rounds = 12
 app.db = mongo.travel_pro
 auth_info = loginInfo.loginInfo()
