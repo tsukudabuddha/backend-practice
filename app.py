@@ -136,7 +136,7 @@ class Trip(Resource):
                 all_trips.append(trip)
             return (all_trips, 200, None)
         else:
-            return("user not found", 404, None)
+            return(all_trips, 200, None)
 
     @authenticated_request
     def delete(self):
